@@ -1,0 +1,42 @@
+/etc/nginx/sites-enabled/default
+
+```
+upstream example_server {                          # Определить upstream для обращения к серверу https://example.com/
+    server example.com;
+}
+
+server {
+    listen 80;
+    server_name 158.160.80.40.nip.io;
+
+    access_log /var/log/nginx/nip.access.log;
+    root /var/www/html;
+    index index.nginx-debian.html;           # Файл который лежит в /var/www/html будет показан на стартовой странице
+
+    location /rbm_images {
+        alias /var/www/rebrain/images;   # По этому пути лежит картинка logo.png. Путь такой 158.160.80.40.nip.io/rbm_images/logo.png
+        allow all;            
+        deny 10.10.10.10;               # Разрешены обращения со всех хостов, кроме
+    }
+    
+    location / {
+        auth_basic "closed site";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+
+        location /noauth/ {
+            auth_basic off;
+        }
+    }
+
+    location /example {
+        proxy_pass http://example_server;
+        proxy_set_header Host example.com;    # Самая важная часть чтобы работало проксирование
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+
+```
+

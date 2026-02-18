@@ -1,0 +1,55 @@
+upstream example_server {                          
+    server app;
+}
+
+map $http_user_agent $browser {       #Добавили map при firefox будет выводить информацию /browser/      
+    default Noname;
+    "~*Firefox" Firefox;
+    "~*Chrome" Chrome;
+    "~*Safari" Safari;
+    "~*Edge" Edge;
+}
+
+server {
+    listen 80;
+    server_name 158.160.80.40.nip.io;
+
+    access_log /var/log/nginx/nip.access.log;
+    root /var/www/html;
+    index htpasswd index.nginx-debian.html;           #Найти по файлу
+
+    location /rbm_images {
+        alias /var/www/rebrain/images;
+        allow all;            
+        deny 10.10.10.10;
+    }
+    
+    location / {
+        
+        try_files $uri @app =404;
+        auth_basic "Restricted Content";
+        auth_basic_user_file /etc/nginx/htpasswd;
+        }
+
+        location /noauth/ {
+            auth_basic off;
+        }
+
+    # location /browser {                  Чтобы получить информацию файлом
+    #     return 200 "Hello, $browser";
+    # }
+
+    location /browser {
+        add_header Content-Type text/html;          #Чтобы увидеть на странице html
+
+        return 200 '<html><body>Hello, $browser</body></html>';
+    }
+
+    location /example {
+        proxy_pass http://example_server;
+        proxy_set_header Host example.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

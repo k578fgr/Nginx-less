@@ -1,0 +1,142 @@
+
+SET
+
+set $variable_name VALUE. Важно, что имя переменной обязательно должно начинаться со знака $ 
+и дальнейшее обращение к ней производится таким же образом.
+
+При помощи set можно и производить конкатенацию строк, к примеру,
+set $my_requests "$http_user_agent $request_method"; 
+(в этом примере мы обращаемся к глобальным переменным, которые доступны для всех запросов).
+
+
+IF
+
+Так, к примеру, можно определить, обращаются ли к серверу из бразуера Firefox при помощи следующего запроса:
+
+```
+if ($http_user_agent ~ Firefox) {
+    set $browser firefox;
+}
+```
+
+
+MAP
+
+map
+
+Директива map позволяет задать переменную, которая в зависимости от установленного значения в момент обращения к map возвращает определенное значение. В целом, map стоит воспринимать как своеобразную переменную типа ключ-значение, у которой ключ всегда берется из другой переменной.
+
+Так, к примеру, если вы хотите выставить переменную окружения в зависимости от другого значения, можно либо сделать это через if:
+
+if ($arg_one = "one") {
+    set $var_two "two";
+}
+
+if ($arg_one = "three") {
+    set $var_two "four";
+}
+
+Либо сделать более элегантное решение через map:
+Тут легко чел
+$arg_one = всё то что под ним, $var_two = тоже самое
+
+map $arg_one $var_two {
+    "one"    "two";
+    "three"  "four";
+}
+
+
+Ключом же может выступать не только конкретная переменная, но и вообще какая-то строка, которая составлена из переменных:
+
+map "$browser-$request_method" $var_two {
+    "firefox-POST" "ff-post";
+    "firefox-GET"  "ff-get";
+}
+
+
+При помощи спецключа default можно установить значение, возвращаемое по умолчанию, расширяя наш пример:
+
+map "$browser-$request_method" $var_two {
+    "firefox-POST" "ff-post";
+    "firefox-GET"  "ff-get";
+    default        "ie-any";
+}
+
+**regex
+$regex - это нужное нам регулярное выражение.
+
+Пример использования - server_name ~^(?<user>.+)\.example\.net$;.
+
+Кроме того, регулярные выражения можно использовать и в location: location ~* .(png|gif|ico|jpg|jpeg)$ {}. 
+Такое регуляное выражение будет работать на всех изображениях, вне зависимости от остального пути.
+
+Задание
+
+Запрос на /browser/ должен возвращать сообщение типа Hello, $browser, 
+где $browser строится на базе User Agent по регулярному выражению. 
+Как пример, обращение из Firefox должно использовать как значение Firefox, 
+а любой неизвестный вариант - Noname.
+
+
+Пример
+
+map $http_user_agent $old_browser {
+    default 0;
+    "~Android [1-2]\." 1;
+    "~Mozilla.*Firefox/1[0-9]\." 1;
+    "~Chrome/2[0-9]\." 1;
+    "~AppleWebKit.*Version/[1-4]\..*Safari" 1;
+}   
+
+Через set
+В данном примере при обращении на /browser/ 
+Nginx будет извлекать информацию о браузере из заголовка User Agent и 
+возвращать соответствующее приветственное сообщение. 
+Если браузер не определен или неизвестен, будет использовано значение Noname.
+
+server {
+    listen 80;
+    server_name example.com;
+
+    location /browser/ {
+        set $browser Noname;
+        
+        if ($http_user_agent ~* "Firefox") {
+            set $browser Firefox;
+        }
+        if ($http_user_agent ~* "Chrome") {
+            set $browser Chrome;
+        }
+        if ($http_user_agent ~* "Safari") {
+            set $browser Safari;
+        }
+        if ($http_user_agent ~* "Edge") {
+            set $browser Edge;
+        }
+
+        return 200 "Hello, $browser";
+    }
+}
+
+Или через MAP
+В данном примере мы используем директиву map, которая сопоставляет значение $http_user_agent (User Agent) с браузером. 
+Если User Agent соответствует какому-либо из шаблонов (например, содержит "Firefox"), 
+то переменной $browser будет присвоено соответствующее значение (например, "Firefox").
+
+    map $http_user_agent $browser {           
+        default Noname;
+        "~*Firefox" Firefox;
+        "~*Chrome" Chrome;
+        "~*Safari" Safari;
+        "~*Edge" Edge;
+    }
+
+server {
+    listen 80;
+    server_name example.com;
+
+    location /browser/ {
+        return 200 "Hello, $browser";
+    }
+}
+
